@@ -1,0 +1,2 @@
+rootProject.name = "MirrorDuel"
+include 'core', 'desktop'
