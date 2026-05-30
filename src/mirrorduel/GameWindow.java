@@ -2,42 +2,57 @@ package mirrorduel;
 
 import mirrorduel.GameEnums.*;
 import javax.swing.*;
-import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 
+/**
+ * GameWindow — minimalist UI matching the provided mockup.
+ * Palette: off-white card (#EDEDED), grey board tiles, red/blue text accents.
+ */
 public class GameWindow extends JFrame {
-    private final GameManager gm = new GameManager();
-    private final CardLayout cards = new CardLayout();
-    private final JPanel root = new JPanel(cards);
 
-    // Panels
-    private JPanel menuPanel, rulesPanel, gamePanel, victoryPanel;
+    // ── Palette ──────────────────────────────────────────────────
+    private static final Color BG          = new Color(30, 30, 30);      // outer bg
+    private static final Color CARD_BG     = new Color(210, 210, 210);   // rounded card
+    private static final Color BTN_BG      = new Color(188, 188, 188);   // button fill
+    private static final Color BTN_FG      = new Color(90, 90, 90);      // button text/icon
+    private static final Color RED_ACCENT  = new Color(210, 55, 55);
+    private static final Color BLUE_ACCENT = new Color(55, 130, 210);
+    private static final Color TEXT_DARK   = new Color(60, 60, 60);
+    private static final Color TEXT_MID    = new Color(100, 100, 100);
+
+    private static final int CARD_RADIUS = 22;
+
+    private final GameManager gm = new GameManager();
+    private final CardLayout  cards = new CardLayout();
+    private final JPanel      root  = new JPanel(cards);
+
+    private JPanel    menuPanel, rulesPanel, gamePanel, victoryPanel;
     private BoardPanel boardPanel;
 
-    // Sidebar widgets
-    private JLabel turnLabel, playerLabel, instructionLabel;
-    private JButton rotateBtn;
+    // Sidebar / game widgets
+    private JLabel    turnLabel, playerLabel, instructionLabel;
+    private JButton   rotateBtn;
     private JTextArea logArea;
-
-    // Victory widgets
-    private JLabel winnerLabel;
+    private JLabel    winnerLabel;
 
     public GameWindow() {
         super("Mirror Duel");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
+        getContentPane().setBackground(BG);
 
         buildMenuPanel();
         buildRulesPanel();
         buildGamePanel();
         buildVictoryPanel();
 
-        root.add(menuPanel,   "MENU");
-        root.add(rulesPanel,  "RULES");
-        root.add(gamePanel,   "GAME");
-        root.add(victoryPanel,"VICTORY");
+        root.add(menuPanel,    "MENU");
+        root.add(rulesPanel,   "RULES");
+        root.add(gamePanel,    "GAME");
+        root.add(victoryPanel, "VICTORY");
+        root.setBackground(BG);
 
         add(root);
         cards.show(root, "MENU");
@@ -45,375 +60,242 @@ public class GameWindow extends JFrame {
         setLocationRelativeTo(null);
     }
 
-    // ──────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
     //  MAIN MENU
-    // ──────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
     private void buildMenuPanel() {
-        menuPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
-                GradientPaint gp = new GradientPaint(0, 0, new Color(10, 14, 30), 0, getHeight(), new Color(25, 35, 65));
-                g2.setPaint(gp);
-                g2.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-        menuPanel.setLayout(new GridBagLayout());
-        menuPanel.setPreferredSize(new Dimension(700, 560));
+        menuPanel = darkPanel(new GridBagLayout());
+        menuPanel.setPreferredSize(new Dimension(480, 500));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(12, 20, 12, 20);
-        gbc.gridx = 0;
+        JPanel card = card(new GridBagLayout());
+        card.setPreferredSize(new Dimension(320, 360));
 
-        // Title
-        JLabel title = new JLabel("MIRROR DUEL");
-        title.setFont(new Font("Serif", Font.BOLD, 54));
-        title.setForeground(new Color(220, 180, 80));
-        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
-        gbc.gridy = 0;
-        menuPanel.add(title, gbc);
+        GridBagConstraints gbc = gbc();
 
-        JLabel subtitle = new JLabel("Laser Strategy for Two Players");
-        subtitle.setFont(new Font("Serif", Font.ITALIC, 18));
-        subtitle.setForeground(new Color(150, 170, 210));
-        gbc.gridy = 1;
-        menuPanel.add(subtitle, gbc);
-
-        // Divider
-        JSeparator sep = new JSeparator();
-        sep.setForeground(new Color(80, 100, 150));
-        sep.setPreferredSize(new Dimension(320, 2));
-        gbc.gridy = 2;
-        menuPanel.add(sep, gbc);
-
-        // Buttons
-        JButton playBtn = styledButton("⚔  Play Game", new Color(60, 180, 80), new Color(40, 140, 60));
-        playBtn.addActionListener(e -> {
-            gm.startNewGame();
-            refreshSidebar();
-            cards.show(root, "GAME");
-            pack();
-        });
-        gbc.gridy = 3;
-        menuPanel.add(playBtn, gbc);
-
-        JButton rulesBtn = styledButton("📖  How to Play", new Color(60, 120, 200), new Color(40, 90, 160));
-        rulesBtn.addActionListener(e -> cards.show(root, "RULES"));
-        gbc.gridy = 4;
-        menuPanel.add(rulesBtn, gbc);
-
-        JButton quitBtn = styledButton("✕  Quit", new Color(160, 60, 60), new Color(120, 40, 40));
-        quitBtn.addActionListener(e -> System.exit(0));
-        gbc.gridy = 5;
-        menuPanel.add(quitBtn, gbc);
-
-        // Laser art decoration
-        JLabel deco = new JLabel("— ⟩⟩ ◈ ⟩⟩ —");
-        deco.setFont(new Font("Monospaced", Font.PLAIN, 22));
-        deco.setForeground(new Color(80, 200, 240, 180));
-        gbc.gridy = 6;
-        menuPanel.add(deco, gbc);
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    //  RULES SCREEN
-    // ──────────────────────────────────────────────────────────────
-    private void buildRulesPanel() {
-        rulesPanel = new JPanel(new BorderLayout(10, 10));
-        rulesPanel.setBackground(new Color(12, 18, 35));
-        rulesPanel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
-        rulesPanel.setPreferredSize(new Dimension(700, 560));
-
-        JLabel title = new JLabel("HOW TO PLAY  —  Mirror Duel");
-        title.setFont(new Font("Serif", Font.BOLD, 28));
-        title.setForeground(new Color(220, 180, 80));
+        JLabel title = label("MIRROR DUEL", 32, Font.BOLD, RED_ACCENT);
         title.setHorizontalAlignment(SwingConstants.CENTER);
-        rulesPanel.add(title, BorderLayout.NORTH);
+        gbc.gridy = 0; gbc.insets = new Insets(18, 20, 4, 20);
+        card.add(title, gbc);
 
-        String rules =
-            "OBJECTIVE\n" +
-            "  Direct your laser beam to hit the opponent's Core Crystal.\n\n" +
-            "PIECES (each player has):\n" +
-            "  ◉  Laser Emitter  — fires a beam across the board\n" +
-            "  ◈  Core Crystal   — protect this at all costs!\n" +
-            "  /  Slash Mirror   — reflects beams along the / diagonal\n" +
-            "  \\  Backslash Mirror — reflects beams along the \\ diagonal\n\n" +
-            "TURN ACTIONS (pick exactly ONE per turn):\n" +
-            "  1. Rotate a mirror  (/ ↔ \\)\n" +
-            "  2. Move a mirror or emitter one tile orthogonally\n\n" +
-            "LASER REFLECTION RULES:\n" +
-            "  Slash  /  :  Left→Up  |  Right→Down  |  Up→Right  |  Down→Left\n" +
-            "  Back   \\  :  Left→Down | Right→Up  |  Up→Left  |  Down→Right\n\n" +
-            "HOW TO PLAY:\n" +
-            "  • Click a piece to select it (yellow highlight).\n" +
-            "  • Green squares show valid move destinations.\n" +
-            "  • Click a green square to move, or press ROTATE to rotate a mirror.\n" +
-            "  • The laser fires automatically after every move.\n" +
-            "  • The beam path is always visible — no hidden information.\n\n" +
-            "WIN CONDITION:\n" +
-            "  Your laser beam reaches the enemy's Core Crystal — instant win!\n\n" +
-            "STRATEGY TIPS:\n" +
-            "  • Build multi-mirror beam chains to attack from unexpected angles.\n" +
-            "  • Move mirrors to block incoming beams.\n" +
-            "  • Create 'forced response' situations where the opponent\n" +
-            "    must defend but leaves another angle open.";
+        JLabel sub = label("Laser Strategy · 2 Players", 12, Font.PLAIN, TEXT_MID);
+        sub.setHorizontalAlignment(SwingConstants.CENTER);
+        gbc.gridy = 1; gbc.insets = new Insets(0, 20, 18, 20);
+        card.add(sub, gbc);
 
-        JTextArea ta = new JTextArea(rules);
-        ta.setEditable(false);
-        ta.setFont(new Font("Monospaced", Font.PLAIN, 13));
-        ta.setBackground(new Color(18, 26, 50));
-        ta.setForeground(new Color(200, 215, 240));
-        ta.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        card.add(sep(), gbc(0, 2, new Insets(0, 16, 14, 16)));
 
-        JScrollPane sp = new JScrollPane(ta);
-        sp.setBorder(BorderFactory.createLineBorder(new Color(60, 80, 130), 1));
-        rulesPanel.add(sp, BorderLayout.CENTER);
-
-        JButton back = styledButton("← Back to Menu", new Color(80, 80, 140), new Color(55, 55, 110));
-        back.addActionListener(e -> cards.show(root, "MENU"));
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        btnPanel.setOpaque(false);
-        btnPanel.add(back);
-        rulesPanel.add(btnPanel, BorderLayout.SOUTH);
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    //  GAME SCREEN
-    // ──────────────────────────────────────────────────────────────
-    private void buildGamePanel() {
-        gamePanel = new JPanel(new BorderLayout(0, 0));
-        gamePanel.setBackground(new Color(10, 14, 28));
-
-        // Board
-        boardPanel = new BoardPanel(gm);
-        boardPanel.addPropertyChangeListener("gameStateChanged", evt -> {
-            refreshSidebar();
-            if (gm.getScreen() == GameScreen.VICTORY) {
-                showVictory();
-            }
+        JButton play = btn("▶  Play Game");
+        play.addActionListener(e -> {
+            gm.startNewGame(); refreshSidebar();
+            cards.show(root, "GAME"); pack();
         });
-        gamePanel.add(boardPanel, BorderLayout.CENTER);
+        gbc.gridy = 3; gbc.insets = new Insets(6, 20, 6, 20); gbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(play, gbc);
 
-        // Sidebar
-        JPanel sidebar = buildSidebar();
-        gamePanel.add(sidebar, BorderLayout.EAST);
+        JButton rules = btn("?  How to Play");
+        rules.addActionListener(e -> cards.show(root, "RULES"));
+        gbc.gridy = 4;
+        card.add(rules, gbc);
 
-        // Row labels (numbers) on left
-        JPanel rowLabels = buildRowLabels();
-        gamePanel.add(rowLabels, BorderLayout.WEST);
+        JButton quit = btn("✕  Quit");
+        quit.addActionListener(e -> System.exit(0));
+        gbc.gridy = 5; gbc.insets = new Insets(6, 20, 20, 20);
+        card.add(quit, gbc);
 
-        // Col labels (letters) on bottom
-        JPanel colLabels = buildColLabels();
-        gamePanel.add(colLabels, BorderLayout.SOUTH);
+        menuPanel.add(card);
     }
 
-    private JPanel buildSidebar() {
-        JPanel sb = new JPanel();
-        sb.setLayout(new BoxLayout(sb, BoxLayout.Y_AXIS));
-        sb.setBackground(new Color(14, 20, 40));
-        sb.setPreferredSize(new Dimension(200, 0));
-        sb.setBorder(BorderFactory.createMatteBorder(0, 2, 0, 0, new Color(40, 60, 110)));
+    // ══════════════════════════════════════════════════════════════
+    //  RULES
+    // ══════════════════════════════════════════════════════════════
+    private void buildRulesPanel() {
+        rulesPanel = darkPanel(new BorderLayout(0, 0));
+        rulesPanel.setPreferredSize(new Dimension(480, 500));
 
-        sb.add(Box.createVerticalStrut(18));
+        JPanel card = card(new BorderLayout(0, 10));
+        card.setBorder(BorderFactory.createEmptyBorder(20, 22, 16, 22));
 
-        // Title
-        JLabel t = new JLabel("MIRROR DUEL");
-        t.setFont(new Font("Serif", Font.BOLD, 18));
-        t.setForeground(new Color(220, 180, 80));
-        t.setAlignmentX(Component.CENTER_ALIGNMENT);
-        sb.add(t);
+        JLabel title = label("How to Play", 22, Font.BOLD, TEXT_DARK);
+        title.setHorizontalAlignment(SwingConstants.CENTER);
+        card.add(title, BorderLayout.NORTH);
 
-        sb.add(Box.createVerticalStrut(14));
-        sb.add(hsep());
+        String txt =
+            "OBJECTIVE\n" +
+            "  Hit the enemy Core Crystal with your laser.\n\n" +
+            "PIECES (each player)\n" +
+            "  ◉  Emitter  — fires your laser\n" +
+            "  ◈  Crystal  — protect this!\n" +
+            "  /  Slash mirror  |  \\  Backslash mirror\n\n" +
+            "EACH TURN — pick ONE action:\n" +
+            "  1. Move a piece one tile (orthogonal)\n" +
+            "  2. Rotate a mirror  / ↔ \\\n\n" +
+            "REFLECTION  (Slash /)\n" +
+            "  Left→Up  Right→Down  Up→Right  Down→Left\n\n" +
+            "REFLECTION  (Backslash \\)\n" +
+            "  Left→Down  Right→Up  Up→Left  Down→Right\n\n" +
+            "CONTROLS\n" +
+            "  Click piece → select (yellow ring)\n" +
+            "  Click green tile → move there\n" +
+            "  Press ROTATE → rotate selected mirror\n\n" +
+            "WIN\n" +
+            "  Laser reaches enemy crystal — instant win!";
 
-        // Turn info
-        turnLabel = new JLabel("Turn 1");
-        turnLabel.setFont(new Font("Monospaced", Font.BOLD, 14));
-        turnLabel.setForeground(new Color(180, 200, 230));
-        turnLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        sb.add(Box.createVerticalStrut(10));
-        sb.add(turnLabel);
+        JTextArea ta = new JTextArea(txt);
+        ta.setEditable(false);
+        ta.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        ta.setBackground(new Color(230, 230, 230));
+        ta.setForeground(TEXT_DARK);
+        ta.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        JScrollPane sp = new JScrollPane(ta);
+        sp.setBorder(BorderFactory.createLineBorder(new Color(195, 195, 195)));
+        card.add(sp, BorderLayout.CENTER);
 
-        playerLabel = new JLabel("RED's Turn");
-        playerLabel.setFont(new Font("Serif", Font.BOLD, 20));
-        playerLabel.setForeground(new Color(240, 90, 90));
+        JButton back = imgBtn("btn_mainmenu.png", "← Menu");
+        back.addActionListener(e -> cards.show(root, "MENU"));
+        JPanel bp = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        bp.setOpaque(false);
+        bp.add(back);
+        card.add(bp, BorderLayout.SOUTH);
+
+        JPanel wrap = darkPanel(new GridBagLayout());
+        wrap.setPreferredSize(new Dimension(480, 500));
+        wrap.add(card);
+        rulesPanel = wrap;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  GAME SCREEN
+    // ══════════════════════════════════════════════════════════════
+    private void buildGamePanel() {
+        gamePanel = darkPanel(new GridBagLayout());
+
+        boardPanel = new BoardPanel(gm);
+        boardPanel.addPropertyChangeListener("gameStateChanged", e -> {
+            refreshSidebar();
+            if (gm.getScreen() == GameScreen.VICTORY) showVictory();
+        });
+
+        // Outer card wraps board + bottom bar
+        int boardPx = BoardPanel.BOARD_PX;
+        int cardW   = boardPx + 32;
+
+        JPanel card = card(new BorderLayout(0, 10));
+        card.setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
+        card.setPreferredSize(new Dimension(cardW, boardPx + 160));
+
+        // ── Top: turn label ──
+        playerLabel = label("RED'S TURN", 16, Font.BOLD, RED_ACCENT);
+        playerLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        turnLabel = label("Turn 1", 11, Font.PLAIN, TEXT_MID);
+        turnLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        instructionLabel = label("Click a piece to select", 11, Font.PLAIN, TEXT_MID);
+        instructionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JPanel topBar = new JPanel();
+        topBar.setLayout(new BoxLayout(topBar, BoxLayout.Y_AXIS));
+        topBar.setOpaque(false);
         playerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        sb.add(Box.createVerticalStrut(4));
-        sb.add(playerLabel);
-
-        sb.add(Box.createVerticalStrut(10));
-        sb.add(hsep());
-
-        // Instruction
-        instructionLabel = new JLabel("<html><center>Click a piece<br>to select it</center></html>");
-        instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        instructionLabel.setForeground(new Color(160, 180, 220));
+        turnLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        sb.add(Box.createVerticalStrut(10));
-        sb.add(instructionLabel);
+        topBar.add(playerLabel);
+        topBar.add(Box.createVerticalStrut(2));
+        topBar.add(turnLabel);
+        topBar.add(Box.createVerticalStrut(2));
+        topBar.add(instructionLabel);
 
-        sb.add(Box.createVerticalStrut(12));
+        card.add(topBar, BorderLayout.NORTH);
 
-        // Rotate button
-        rotateBtn = styledButton("↺ Rotate Mirror", new Color(160, 100, 40), new Color(120, 75, 25));
-        rotateBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        rotateBtn.setMaximumSize(new Dimension(175, 40));
+        // ── Centre: board ──
+        JPanel boardWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        boardWrap.setOpaque(false);
+        boardWrap.add(boardPanel);
+        card.add(boardWrap, BorderLayout.CENTER);
+
+        // ── Bottom: rotate hint + buttons ──
+        rotateBtn = btn("↺  Rotate Mirror");
         rotateBtn.setEnabled(false);
         rotateBtn.addActionListener(e -> {
-            boolean changed = gm.handleRotate();
-            if (changed) {
-                refreshSidebar();
-                boardPanel.repaint();
+            if (gm.handleRotate()) {
+                refreshSidebar(); boardPanel.repaint();
                 if (gm.getScreen() == GameScreen.VICTORY) showVictory();
             }
         });
-        sb.add(rotateBtn);
 
-        sb.add(Box.createVerticalStrut(12));
-        sb.add(hsep());
+        JButton menuBtn    = imgBtn("btn_mainmenu.png", "Main Menu");
+        JButton restartBtn = imgBtn("btn_restart.png",  "Restart");
 
-        // Move log
-        JLabel logTitle = new JLabel("Move Log");
-        logTitle.setFont(new Font("Monospaced", Font.BOLD, 12));
-        logTitle.setForeground(new Color(140, 160, 200));
-        logTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
-        sb.add(Box.createVerticalStrut(8));
-        sb.add(logTitle);
-
-        logArea = new JTextArea(10, 14);
-        logArea.setEditable(false);
-        logArea.setFont(new Font("Monospaced", Font.PLAIN, 10));
-        logArea.setBackground(new Color(10, 14, 28));
-        logArea.setForeground(new Color(130, 160, 200));
-        logArea.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
-        JScrollPane logScroll = new JScrollPane(logArea);
-        logScroll.setBorder(BorderFactory.createLineBorder(new Color(40, 60, 100)));
-        logScroll.setMaximumSize(new Dimension(185, 140));
-        sb.add(Box.createVerticalStrut(4));
-        sb.add(logScroll);
-
-        sb.add(Box.createVerticalStrut(10));
-        sb.add(hsep());
-
-        // Menu button
-        JButton menuBtn = styledButton("☰ Main Menu", new Color(60, 70, 110), new Color(40, 50, 85));
-        menuBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        menuBtn.setMaximumSize(new Dimension(175, 38));
         menuBtn.addActionListener(e -> {
             gm.setScreen(GameScreen.MAIN_MENU);
-            cards.show(root, "MENU");
-            pack();
+            cards.show(root, "MENU"); pack();
         });
-        sb.add(Box.createVerticalStrut(6));
-        sb.add(menuBtn);
-
-        JButton restartBtn = styledButton("↺ Restart", new Color(50, 110, 90), new Color(35, 80, 65));
-        restartBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        restartBtn.setMaximumSize(new Dimension(175, 38));
         restartBtn.addActionListener(e -> {
-            gm.startNewGame();
-            refreshSidebar();
-            boardPanel.repaint();
+            gm.startNewGame(); refreshSidebar(); boardPanel.repaint();
         });
-        sb.add(Box.createVerticalStrut(6));
-        sb.add(restartBtn);
 
-        sb.add(Box.createVerticalGlue());
-        return sb;
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        btnRow.setOpaque(false);
+        btnRow.add(menuBtn);
+        btnRow.add(restartBtn);
+
+        JPanel bottomBar = new JPanel();
+        bottomBar.setLayout(new BoxLayout(bottomBar, BoxLayout.Y_AXIS));
+        bottomBar.setOpaque(false);
+        rotateBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        bottomBar.add(Box.createVerticalStrut(4));
+        bottomBar.add(rotateBtn);
+        bottomBar.add(Box.createVerticalStrut(8));
+        bottomBar.add(btnRow);
+
+        card.add(bottomBar, BorderLayout.SOUTH);
+
+        gamePanel.add(card);
     }
 
-    private JPanel buildRowLabels() {
-        JPanel p = new JPanel(new GridLayout(8, 1));
-        p.setBackground(new Color(10, 14, 28));
-        p.setPreferredSize(new Dimension(24, Board.SIZE * 72));
-        for (int r = 0; r < Board.SIZE; r++) {
-            JLabel lbl = new JLabel(String.valueOf(8 - r), SwingConstants.CENTER);
-            lbl.setFont(new Font("Monospaced", Font.PLAIN, 11));
-            lbl.setForeground(new Color(100, 130, 180));
-            p.add(lbl);
-        }
-        return p;
-    }
-
-    private JPanel buildColLabels() {
-        JPanel p = new JPanel(new BorderLayout());
-        p.setBackground(new Color(10, 14, 28));
-
-        JPanel inner = new JPanel(new GridLayout(1, 8));
-        inner.setBackground(new Color(10, 14, 28));
-        String[] letters = {"A","B","C","D","E","F","G","H"};
-        for (String l : letters) {
-            JLabel lbl = new JLabel(l, SwingConstants.CENTER);
-            lbl.setFont(new Font("Monospaced", Font.PLAIN, 11));
-            lbl.setForeground(new Color(100, 130, 180));
-            lbl.setPreferredSize(new Dimension(72, 22));
-            inner.add(lbl);
-        }
-        // offset for row label width
-        p.add(Box.createHorizontalStrut(24), BorderLayout.WEST);
-        p.add(inner, BorderLayout.CENTER);
-        return p;
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    //  VICTORY SCREEN
-    // ──────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
+    //  VICTORY
+    // ══════════════════════════════════════════════════════════════
     private void buildVictoryPanel() {
-        victoryPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
-                GradientPaint gp = new GradientPaint(0, 0, new Color(5, 8, 20), 0, getHeight(), new Color(20, 30, 60));
-                g2.setPaint(gp);
-                g2.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-        victoryPanel.setLayout(new GridBagLayout());
-        victoryPanel.setPreferredSize(new Dimension(700, 560));
+        victoryPanel = darkPanel(new GridBagLayout());
+        victoryPanel.setPreferredSize(new Dimension(480, 400));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(14, 20, 14, 20);
-        gbc.gridx = 0;
+        JPanel card = card(new GridBagLayout());
+        card.setPreferredSize(new Dimension(300, 280));
 
-        JLabel vcrown = new JLabel("♛");
-        vcrown.setFont(new Font("Serif", Font.PLAIN, 80));
-        vcrown.setForeground(new Color(220, 180, 80));
-        gbc.gridy = 0;
-        victoryPanel.add(vcrown, gbc);
+        GridBagConstraints gbc = gbc();
 
-        winnerLabel = new JLabel("RED WINS!");
-        winnerLabel.setFont(new Font("Serif", Font.BOLD, 52));
-        winnerLabel.setForeground(new Color(240, 90, 90));
-        gbc.gridy = 1;
-        victoryPanel.add(winnerLabel, gbc);
+        JLabel crown = label("♛", 60, Font.PLAIN, RED_ACCENT);
+        crown.setHorizontalAlignment(SwingConstants.CENTER);
+        gbc.gridy = 0; gbc.insets = new Insets(20, 20, 6, 20);
+        card.add(crown, gbc);
 
-        JLabel sub = new JLabel("The laser found its mark.");
-        sub.setFont(new Font("Serif", Font.ITALIC, 20));
-        sub.setForeground(new Color(160, 180, 220));
-        gbc.gridy = 2;
-        victoryPanel.add(sub, gbc);
+        winnerLabel = label("RED WINS!", 28, Font.BOLD, RED_ACCENT);
+        winnerLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        gbc.gridy = 1; gbc.insets = new Insets(0, 20, 4, 20);
+        card.add(winnerLabel, gbc);
 
-        JSeparator sep = new JSeparator();
-        sep.setForeground(new Color(80, 100, 150));
-        sep.setPreferredSize(new Dimension(320, 2));
-        gbc.gridy = 3;
-        victoryPanel.add(sep, gbc);
+        JLabel sub = label("The laser found its mark.", 12, Font.PLAIN, TEXT_MID);
+        sub.setHorizontalAlignment(SwingConstants.CENTER);
+        gbc.gridy = 2; gbc.insets = new Insets(0, 20, 14, 20);
+        card.add(sub, gbc);
 
-        JButton playAgain = styledButton("⚔  Play Again", new Color(60, 180, 80), new Color(40, 140, 60));
+        card.add(sep(), gbc(0, 3, new Insets(0, 16, 14, 16)));
+
+        JButton playAgain = imgBtn("btn_restart.png", "Play Again");
         playAgain.addActionListener(e -> {
-            gm.startNewGame();
-            refreshSidebar();
-            boardPanel.repaint();
-            cards.show(root, "GAME");
-            pack();
+            gm.startNewGame(); refreshSidebar(); boardPanel.repaint();
+            cards.show(root, "GAME"); pack();
         });
-        gbc.gridy = 4;
-        victoryPanel.add(playAgain, gbc);
+        gbc.gridy = 4; gbc.insets = new Insets(4, 20, 6, 20); gbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(playAgain, gbc);
 
-        JButton menuBtn = styledButton("☰  Main Menu", new Color(60, 80, 150), new Color(40, 60, 120));
+        JButton menuBtn = imgBtn("btn_mainmenu.png", "Main Menu");
         menuBtn.addActionListener(e -> cards.show(root, "MENU"));
-        gbc.gridy = 5;
-        victoryPanel.add(menuBtn, gbc);
+        gbc.gridy = 5; gbc.insets = new Insets(4, 20, 20, 20);
+        card.add(menuBtn, gbc);
+
+        victoryPanel.add(card);
     }
 
     private void showVictory() {
@@ -421,18 +303,19 @@ public class GameWindow extends JFrame {
         if (w == null) return;
         if (w == PlayerID.RED) {
             winnerLabel.setText("RED WINS!");
-            winnerLabel.setForeground(new Color(240, 90, 90));
+            winnerLabel.setForeground(RED_ACCENT);
+            ((JLabel) ((JPanel) victoryPanel.getComponent(0))
+                    .getComponent(0)).setForeground(RED_ACCENT);
         } else {
             winnerLabel.setText("BLUE WINS!");
-            winnerLabel.setForeground(new Color(80, 160, 255));
+            winnerLabel.setForeground(BLUE_ACCENT);
         }
-        cards.show(root, "VICTORY");
-        pack();
+        cards.show(root, "VICTORY"); pack();
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  Sidebar refresh
-    // ──────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
+    //  Sidebar / state refresh
+    // ══════════════════════════════════════════════════════════════
     public void refreshSidebar() {
         if (gm.getBoard() == null) return;
         PlayerID cp = gm.getCurrentPlayer();
@@ -440,70 +323,133 @@ public class GameWindow extends JFrame {
         turnLabel.setText("Turn " + gm.getTurnNumber());
 
         if (cp == PlayerID.RED) {
-            playerLabel.setText("● RED's Turn");
-            playerLabel.setForeground(new Color(240, 90, 90));
+            playerLabel.setText("RED'S TURN");
+            playerLabel.setForeground(RED_ACCENT);
         } else {
-            playerLabel.setText("● BLUE's Turn");
-            playerLabel.setForeground(new Color(80, 160, 255));
+            playerLabel.setText("BLUE'S TURN");
+            playerLabel.setForeground(BLUE_ACCENT);
         }
 
         Piece sel = gm.getSelectedPiece();
         if (sel == null) {
-            instructionLabel.setText("<html><center>Click a piece<br>to select it</center></html>");
+            instructionLabel.setText("Click a piece to select");
             rotateBtn.setEnabled(false);
         } else if (sel.isMirror()) {
             String sym = sel.type == PieceType.MIRROR_SLASH ? "/" : "\\";
-            instructionLabel.setText("<html><center>Selected mirror " + sym +
-                    "<br>Click green square to move<br>or press Rotate</center></html>");
+            instructionLabel.setText("Mirror " + sym + " selected — move or rotate");
             rotateBtn.setEnabled(sel.owner == cp);
         } else {
-            instructionLabel.setText("<html><center>Selected " + sel.type +
-                    "<br>Click green square<br>to move it</center></html>");
+            instructionLabel.setText(sel.type + " selected — click green tile to move");
             rotateBtn.setEnabled(false);
         }
-
-        // Update log
-        StringBuilder sb = new StringBuilder();
-        for (int i = gm.getMoveLog().size() - 1; i >= 0; i--)
-            sb.append(gm.getMoveLog().get(i)).append("\n");
-        logArea.setText(sb.toString());
 
         boardPanel.repaint();
     }
 
-    // ──────────────────────────────────────────────────────────────
-    //  UI helpers
-    // ──────────────────────────────────────────────────────────────
-    private JButton styledButton(String text, Color bg, Color bgHover) {
-        JButton btn = new JButton(text) {
+    // ══════════════════════════════════════════════════════════════
+    //  Widget factory helpers
+    // ══════════════════════════════════════════════════════════════
+    private JPanel darkPanel(LayoutManager lm) {
+        JPanel p = new JPanel(lm);
+        p.setBackground(BG);
+        return p;
+    }
+
+    /** Rounded card panel */
+    private JPanel card(LayoutManager lm) {
+        JPanel p = new JPanel(lm) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                Color c = getModel().isRollover() ? bgHover : bg;
-                g2.setColor(c);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-                g2.setColor(new Color(255, 255, 255, 60));
-                g2.setStroke(new BasicStroke(1.5f));
-                g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 10, 10);
+                g2.setColor(CARD_BG);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), CARD_RADIUS, CARD_RADIUS);
+            }
+        };
+        p.setOpaque(false);
+        return p;
+    }
+
+    /** Plain text button styled like the mockup grey pill */
+    private JButton btn(String text) {
+        JButton b = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getModel().isRollover() ? BTN_BG.darker() : BTN_BG);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
                 super.paintComponent(g);
             }
         };
-        btn.setFont(new Font("SansSerif", Font.BOLD, 14));
-        btn.setForeground(Color.WHITE);
-        btn.setOpaque(false);
-        btn.setContentAreaFilled(false);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setPreferredSize(new Dimension(200, 44));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
+        b.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        b.setForeground(BTN_FG);
+        b.setOpaque(false);
+        b.setContentAreaFilled(false);
+        b.setBorderPainted(false);
+        b.setFocusPainted(false);
+        b.setPreferredSize(new Dimension(200, 38));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return b;
     }
 
-    private JSeparator hsep() {
+    /**
+     * Button that tries to use the provided image asset;
+     * falls back to the grey pill button with fallbackText if image not found.
+     */
+    private JButton imgBtn(String assetName, String fallbackText) {
+        BufferedImage img = AssetLoader.load(assetName);
+        if (img != null) {
+            // Scale to a comfortable button size (200×44)
+            int bw = 200, bh = 44;
+            BufferedImage scaled = AssetLoader.scaled(assetName, bw, bh);
+            JButton b = new JButton(new ImageIcon(scaled)) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g;
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    if (getModel().isRollover()) {
+                        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.80f));
+                    }
+                    super.paintComponent(g);
+                    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+                }
+            };
+            b.setOpaque(false);
+            b.setContentAreaFilled(false);
+            b.setBorderPainted(false);
+            b.setFocusPainted(false);
+            b.setPreferredSize(new Dimension(bw, bh));
+            b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            return b;
+        }
+        return btn(fallbackText);
+    }
+
+    private JLabel label(String txt, int size, int style, Color color) {
+        JLabel l = new JLabel(txt);
+        l.setFont(new Font("SansSerif", style, size));
+        l.setForeground(color);
+        return l;
+    }
+
+    private JSeparator sep() {
         JSeparator s = new JSeparator();
-        s.setForeground(new Color(50, 70, 120));
-        s.setMaximumSize(new Dimension(185, 2));
+        s.setForeground(new Color(180, 180, 180));
+        s.setMaximumSize(new Dimension(260, 1));
         return s;
+    }
+
+    private GridBagConstraints gbc() {
+        GridBagConstraints g = new GridBagConstraints();
+        g.gridx = 0; g.gridy = 0; g.fill = GridBagConstraints.HORIZONTAL;
+        g.insets = new Insets(6, 20, 6, 20);
+        return g;
+    }
+
+    private GridBagConstraints gbc(int x, int y, Insets ins) {
+        GridBagConstraints g = gbc();
+        g.gridx = x; g.gridy = y; g.insets = ins;
+        return g;
     }
 }
