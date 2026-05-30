@@ -14,6 +14,9 @@ public class GameManager {
     private Piece selectedPiece;
     private boolean awaitingMoveTarget; // true when user has picked a piece and is choosing destination
 
+    // AI opponent — null means 2-player mode
+    private AIPlayer aiOpponent;
+
     // Move history for display
     private final List<String> moveLog = new ArrayList<>();
     private int turnNumber = 1;
@@ -42,6 +45,7 @@ public class GameManager {
      */
     public boolean handleCellClick(int row, int col) {
         if (screen != GameScreen.PLAYING || winner != null) return false;
+        if (isAITurn()) return false; // block human input during AI turn
 
         Piece clickedPiece = board.pieceAt(row, col);
 
@@ -85,6 +89,7 @@ public class GameManager {
      */
     public boolean handleRotate() {
         if (screen != GameScreen.PLAYING || winner != null) return false;
+        if (isAITurn()) return false;
         if (selectedPiece == null || !selectedPiece.isMirror()) return false;
         if (selectedPiece.owner != currentPlayer) return false;
 
@@ -117,6 +122,44 @@ public class GameManager {
     }
 
     // ──────────────────────────────────────────────────────────────
+    //  AI support
+    // ──────────────────────────────────────────────────────────────
+    public void setAIOpponent(AIPlayer ai) { this.aiOpponent = ai; }
+
+    /** True when it is the AI's turn to move. */
+    public boolean isAITurn() {
+        return aiOpponent != null
+                && screen == GameScreen.PLAYING
+                && winner == null
+                && currentPlayer == PlayerID.BLUE;
+    }
+
+    /**
+     * Compute and apply the AI's chosen move.
+     * Must be called from a background thread to avoid blocking the EDT.
+     * Returns true if a move was made.
+     */
+    public boolean doAIMove() {
+        if (!isAITurn()) return false;
+
+        AIPlayer.Move move = aiOpponent.getBestMove(board);
+        if (move == null) return false;
+
+        Piece piece = board.pieceAt(move.pieceRow, move.pieceCol);
+        if (piece == null) return false;
+
+        if (move.type == AIPlayer.Move.Type.ROTATE) {
+            board.rotateMirror(piece);
+            log("Rotate mirror at (" + piece.row + "," + piece.col + ")");
+        } else {
+            board.movePiece(piece, move.targetRow, move.targetCol);
+            log("Move " + piece.type + " to (" + move.targetRow + "," + move.targetCol + ")");
+        }
+        endTurn();
+        return true;
+    }
+
+    // ──────────────────────────────────────────────────────────────
     //  Getters
     // ──────────────────────────────────────────────────────────────
     public Board getBoard()              { return board; }
@@ -127,6 +170,7 @@ public class GameManager {
     public boolean isAwaitingMove()      { return awaitingMoveTarget; }
     public List<String> getMoveLog()     { return moveLog; }
     public int getTurnNumber()           { return turnNumber; }
+    public AIPlayer getAIOpponent()      { return aiOpponent; }
 
     public void setScreen(GameScreen s)  { this.screen = s; }
 }

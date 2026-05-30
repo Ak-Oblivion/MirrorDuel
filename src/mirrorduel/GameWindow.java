@@ -12,6 +12,9 @@ public class GameWindow extends JFrame {
     private final CardLayout cards = new CardLayout();
     private final JPanel root = new JPanel(cards);
 
+    // null = 2-player; non-null = AI game with given difficulty
+    private AIPlayer.Difficulty currentAIDifficulty = null;
+
     // Panels
     private JPanel menuPanel, rulesPanel, gamePanel, victoryPanel;
     private BoardPanel boardPanel;
@@ -87,8 +90,10 @@ public class GameWindow extends JFrame {
         menuPanel.add(sep, gbc);
 
         // Buttons
-        JButton playBtn = styledButton("⚔  Play Game", new Color(60, 180, 80), new Color(40, 140, 60));
+        JButton playBtn = styledButton("⚔  2-Player Game", new Color(60, 180, 80), new Color(40, 140, 60));
         playBtn.addActionListener(e -> {
+            currentAIDifficulty = null;
+            gm.setAIOpponent(null);
             gm.startNewGame();
             refreshSidebar();
             cards.show(root, "GAME");
@@ -97,21 +102,31 @@ public class GameWindow extends JFrame {
         gbc.gridy = 3;
         menuPanel.add(playBtn, gbc);
 
+        JButton easyAIBtn = styledButton("🤖  vs AI  (Easy)", new Color(80, 130, 60), new Color(55, 100, 40));
+        easyAIBtn.addActionListener(e -> startGameVsAI(AIPlayer.Difficulty.EASY));
+        gbc.gridy = 4;
+        menuPanel.add(easyAIBtn, gbc);
+
+        JButton hardAIBtn = styledButton("🤖  vs AI  (Hard)", new Color(180, 60, 60), new Color(140, 40, 40));
+        hardAIBtn.addActionListener(e -> startGameVsAI(AIPlayer.Difficulty.HARD));
+        gbc.gridy = 5;
+        menuPanel.add(hardAIBtn, gbc);
+
         JButton rulesBtn = styledButton("📖  How to Play", new Color(60, 120, 200), new Color(40, 90, 160));
         rulesBtn.addActionListener(e -> cards.show(root, "RULES"));
-        gbc.gridy = 4;
+        gbc.gridy = 6;
         menuPanel.add(rulesBtn, gbc);
 
-        JButton quitBtn = styledButton("✕  Quit", new Color(160, 60, 60), new Color(120, 40, 40));
+        JButton quitBtn = styledButton("✕  Quit", new Color(100, 60, 100), new Color(75, 40, 75));
         quitBtn.addActionListener(e -> System.exit(0));
-        gbc.gridy = 5;
+        gbc.gridy = 7;
         menuPanel.add(quitBtn, gbc);
 
         // Laser art decoration
         JLabel deco = new JLabel("— ⟩⟩ ◈ ⟩⟩ —");
         deco.setFont(new Font("Monospaced", Font.PLAIN, 22));
         deco.setForeground(new Color(80, 200, 240, 180));
-        gbc.gridy = 6;
+        gbc.gridy = 8;
         menuPanel.add(deco, gbc);
     }
 
@@ -190,6 +205,8 @@ public class GameWindow extends JFrame {
             refreshSidebar();
             if (gm.getScreen() == GameScreen.VICTORY) {
                 showVictory();
+            } else {
+                scheduleAIMove();
             }
         });
         gamePanel.add(boardPanel, BorderLayout.CENTER);
@@ -264,7 +281,11 @@ public class GameWindow extends JFrame {
             if (changed) {
                 refreshSidebar();
                 boardPanel.repaint();
-                if (gm.getScreen() == GameScreen.VICTORY) showVictory();
+                if (gm.getScreen() == GameScreen.VICTORY) {
+                    showVictory();
+                } else {
+                    scheduleAIMove();
+                }
             }
         });
         sb.add(rotateBtn);
@@ -311,6 +332,11 @@ public class GameWindow extends JFrame {
         restartBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         restartBtn.setMaximumSize(new Dimension(175, 38));
         restartBtn.addActionListener(e -> {
+            if (currentAIDifficulty != null) {
+                gm.setAIOpponent(new AIPlayer(PlayerID.BLUE, currentAIDifficulty));
+            } else {
+                gm.setAIOpponent(null);
+            }
             gm.startNewGame();
             refreshSidebar();
             boardPanel.repaint();
@@ -401,6 +427,11 @@ public class GameWindow extends JFrame {
 
         JButton playAgain = styledButton("⚔  Play Again", new Color(60, 180, 80), new Color(40, 140, 60));
         playAgain.addActionListener(e -> {
+            if (currentAIDifficulty != null) {
+                gm.setAIOpponent(new AIPlayer(PlayerID.BLUE, currentAIDifficulty));
+            } else {
+                gm.setAIOpponent(null);
+            }
             gm.startNewGame();
             refreshSidebar();
             boardPanel.repaint();
@@ -431,6 +462,50 @@ public class GameWindow extends JFrame {
     }
 
     // ──────────────────────────────────────────────────────────────
+    //  AI mode
+    // ──────────────────────────────────────────────────────────────
+    private void startGameVsAI(AIPlayer.Difficulty difficulty) {
+        currentAIDifficulty = difficulty;
+        gm.setAIOpponent(new AIPlayer(PlayerID.BLUE, difficulty));
+        gm.startNewGame();
+        refreshSidebar();
+        cards.show(root, "GAME");
+        pack();
+    }
+
+    /**
+     * If it is the AI's turn, fire a SwingWorker to compute and apply the move
+     * in the background, then refresh the UI on the EDT when done.
+     */
+    private void scheduleAIMove() {
+        if (!gm.isAITurn()) return;
+
+        // Show "thinking" status before the worker starts
+        instructionLabel.setText("<html><center>AI is thinking...</center></html>");
+        rotateBtn.setEnabled(false);
+
+        SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Boolean doInBackground() {
+                // Small pause so the player can see the board state before AI moves
+                try { Thread.sleep(450); } catch (InterruptedException ignored) {}
+                return gm.doAIMove();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    if (get()) {
+                        refreshSidebar();
+                        if (gm.getScreen() == GameScreen.VICTORY) showVictory();
+                    }
+                } catch (Exception ignored) {}
+            }
+        };
+        worker.execute();
+    }
+
+    // ──────────────────────────────────────────────────────────────
     //  Sidebar refresh
     // ──────────────────────────────────────────────────────────────
     public void refreshSidebar() {
@@ -443,7 +518,8 @@ public class GameWindow extends JFrame {
             playerLabel.setText("● RED's Turn");
             playerLabel.setForeground(new Color(240, 90, 90));
         } else {
-            playerLabel.setText("● BLUE's Turn");
+            String blueLabel = (currentAIDifficulty != null) ? "● BLUE (AI)" : "● BLUE's Turn";
+            playerLabel.setText(blueLabel);
             playerLabel.setForeground(new Color(80, 160, 255));
         }
 
