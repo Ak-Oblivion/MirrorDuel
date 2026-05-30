@@ -1,87 +1,55 @@
-# MIRROR DUEL: NEON PROTOCOL
+# Mirror Duel — Java Strategy Game
 
-> A polished 2-player cyberpunk laser-mirror strategy game — Java + LibGDX
+A turn-based 2-player laser reflection strategy game built with Java Swing.
 
----
+## Requirements
+- Java JDK 17 or later (download from https://adoptium.net)
 
-## 🎮 Gameplay
+## How to Build & Run
 
-Two players battle on an 8×8 neon grid. Redirect your laser beam through mirrors to destroy the opponent's **Core Crystal**.
+### Windows
+1. Double-click `build.bat`  
+   — OR —  
+   Open a terminal in this folder and run:
+   ```
+   build.bat
+   ```
 
-| Feature  | Detail |
-|----------|--------|
-| Players  | 2 (local multiplayer) |
-| Type     | Turn-based strategy |
-| Grid     | 8×8 |
-| Win Con  | Hit opponent's Core Crystal with your laser |
-
----
-
-## ⚡ Quick Start
-
-**Prerequisites:** Java 8+ · Gradle (wrapper included)
-
+### Mac / Linux
 ```bash
-# Run the game
-./gradlew desktop:run          # Linux/macOS
-gradlew.bat desktop:run        # Windows
-
-# Build a fat JAR
-./gradlew desktop:jar
-java -jar desktop/build/libs/MirrorDuel-desktop.jar
+chmod +x build.sh
+./build.sh
 ```
 
----
+This compiles all sources, packages a `MirrorDuel.jar`, and launches the game.
 
-## 🎯 Controls
-
-| Action | Input |
-|--------|-------|
-| Select mirror | Left-click your mirror |
-| Move mirror | Click on a highlighted (blue) adjacent tile |
-| Rotate mirror | Click selected mirror again **or** press `R` |
-| Deselect | Click anywhere else |
-| Restart (after win) | Press `R` |
-| Back to menu | Press `ESC` |
-
----
-
-## 🔭 Mirror Reflection Rules
-
-```
-/ (SLASH)      RIGHT→DOWN  DOWN→LEFT   LEFT→UP    UP→RIGHT
-\ (BACKSLASH)  RIGHT→UP    UP→LEFT     LEFT→DOWN  DOWN→RIGHT
+## Running the pre-built JAR (after first build)
+```bash
+java -jar MirrorDuel.jar
 ```
 
-Lasers reflect off **all** mirrors on the board — friendly or enemy.
-
----
-
-## 🗂 Project Structure
-
+## Project Structure
 ```
 MirrorDuel/
-├── core/src/main/java/com/mirrorduel/
-│   ├── MirrorDuelGame.java        ← LibGDX Game root
-│   ├── core/                      ← Game logic (laser tracing, board, pieces)
-│   ├── rendering/                 ← 3D renderer, bloom, particles
-│   ├── screens/                   ← Menu, Game, Victory, Rules screens
-│   └── audio/                     ← Sound stub
-├── desktop/                       ← LWJGL3 desktop launcher
-└── assets/                        ← Game assets (shaders, fonts, sounds)
+├── src/mirrorduel/
+│   ├── Main.java          — entry point
+│   ├── GameEnums.java     — Direction, PieceType, PlayerID, GameScreen
+│   ├── Piece.java         — game piece model
+│   ├── Board.java         — 8×8 grid + laser tracing
+│   ├── GameManager.java   — turn logic, action handling
+│   ├── AssetLoader.java   — image loading/caching
+│   ├── BoardPanel.java    — board renderer + mouse input
+│   └── GameWindow.java    — main JFrame, all screens
+├── assets/                — game piece images
+├── MANIFEST.MF
+├── build.bat              — Windows build script
+├── build.sh               — Mac/Linux build script
+└── README.md
 ```
 
----
-
-## 🌈 Visual Features
-
-- **LibGDX 3D** — perspective camera, 3D tile geometry, floating pieces
-- **Bloom** — two-pass Gaussian blur post-processing
-- **Layered laser glow** — 3 additive blend layers (outer glow → mid → core)
-- **Crystal pulse** — idle bob + scale animation, explosion on destroy
-- **Camera drift** — subtle cinematic pan; shake on crystal hit
-- **Particle sparks** — burst at reflection points and crystal explosions
-
----
-
-*Built with LibGDX 1.12.1 · Java 8+ · OpenGL · Neon Protocol v1.0*
+## Game Rules (Quick Reference)
+- **Objective:** Direct your laser to hit the enemy's Core Crystal
+- **Each turn:** Do exactly ONE action — move a piece OR rotate a mirror
+- **Slash mirror /:** Left→Up, Right→Down, Up→Right, Down→Left
+- **Backslash mirror \\:** Left→Down, Right→Up, Up→Left, Down→Right
+- **Win:** Laser hits enemy Crystal instantly ends the game
